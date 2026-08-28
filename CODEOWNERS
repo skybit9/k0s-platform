@@ -1,10 +1,10 @@
 # Human owned paths. Agents cannot merge these regardless of what guardrails.yaml says.
-/policies/          @platform-team
-/clusters/          @platform-team
-/bootstrap/         @platform-team
-/agents/config/     @platform-team
-*rbac*              @platform-team
-*secret*            @platform-team
+/policies/          @skybit9
+/clusters/          @skybit9
+/bootstrap/         @skybit9
+/agents/config/     @skybit9
+*rbac*              @skybit9
+*secret*            @skybit9
 
 # Teams own their own overlay.
-/apps/overlays/team-a/   @team-a-admins
+/apps/overlays/team-a/   @skybit9
