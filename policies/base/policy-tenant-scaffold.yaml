@@ -1,0 +1,79 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: tenant-scaffold
+  annotations:
+    policies.kyverno.io/description: >-
+      When Capsule creates a tenant namespace, auto stamp the safe defaults so a team
+      inherits guardrails instead of hand writing boilerplate. This is what makes
+      "available immediately, own it from there" work without being ungoverned.
+spec:
+  generateExisting: true
+  rules:
+    - name: default-deny-netpol
+      match:
+        any:
+          - resources:
+              kinds: ["Namespace"]
+              selector:
+                matchLabels:
+                  capsule.clastix.io/tenant: "?*"
+      generate:
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        name: default-deny-ingress
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true           # Team deletes it, Kyverno puts it back.
+        data:
+          spec:
+            podSelector: {}
+            policyTypes: ["Ingress"]
+            ingress:
+              - from:
+                  - podSelector: {}   # Intra namespace allowed, everything else denied.
+
+    - name: default-limitrange
+      match:
+        any:
+          - resources:
+              kinds: ["Namespace"]
+              selector:
+                matchLabels:
+                  capsule.clastix.io/tenant: "?*"
+      generate:
+        apiVersion: v1
+        kind: LimitRange
+        name: default-limits
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            limits:
+              - type: Container
+                default:
+                  cpu: 500m
+                  memory: 512Mi
+                defaultRequest:
+                  cpu: 100m
+                  memory: 128Mi
+
+    - name: tenant-alerting-rbac
+      match:
+        any:
+          - resources:
+              kinds: ["Namespace"]
+              selector:
+                matchLabels:
+                  capsule.clastix.io/tenant: "?*"
+      generate:
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: tenant-alerting
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          rules:
+            # The line most people miss: without this a team cannot own its own alert routing.
+            - apiGroups: ["monitoring.coreos.com"]
+              resources: ["alertmanagerconfigs", "prometheusrules", "servicemonitors", "podmonitors"]
+              verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]

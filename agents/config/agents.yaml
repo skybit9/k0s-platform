@@ -1,0 +1,31 @@
+version: 1
+common:
+  write_path: git_only              # No agent ever holds a kubeconfig. No kubectl apply. Ever.
+  cluster_access: read_only_metrics_api
+  guardrails: ./guardrails.yaml
+
+agents:
+  - name: triage
+    trigger: alertmanager_webhook
+    reads: ["prometheus", "otel_traces", "git_history"]
+    writes: ["remediation PR"]
+    scope: "scale, roll back a HelmRelease to the previous pinned version, bump a quota within tier"
+
+  - name: provisioning
+    trigger: pull_request_opened
+    paths: ["tenants/**"]
+    reads: ["tenant-tiers ConfigMap", "PR diff"]
+    writes: ["approve and merge, or escalate with a comment"]
+    scope: "validate request shape against a pre approved tier, nothing outside it"
+
+  - name: capacity
+    trigger: schedule_daily
+    reads: ["prometheus usage vs ResourceQuota"]
+    writes: ["right sizing PR"]
+    scope: "quota and LimitRange tuning within tier ceilings"
+
+  - name: security
+    trigger: schedule_daily
+    reads: ["kyverno PolicyReport", "capsule tenant state"]
+    writes: ["drift remediation PR, never auto merged"]
+    scope: "missing labels, stale bindings, policy violations. RBAC findings are reported, never fixed automatically"

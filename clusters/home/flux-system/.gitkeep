@@ -1,0 +1,2 @@
+# Populated by: flux bootstrap github --owner=<you> --repository=k0s-platform --path=clusters/home
+# Do not hand edit. Flux writes gotk-components.yaml and gotk-sync.yaml here.

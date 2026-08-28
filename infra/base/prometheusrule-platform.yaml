@@ -1,0 +1,37 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: platform-baseline
+  namespace: monitoring
+  labels:
+    team: platform                  # Platform owned. Tenants cannot edit or silence these.
+spec:
+  groups:
+    - name: platform.node
+      rules:
+        - alert: NodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Node not ready"
+        - alert: NodeDiskPressure
+          expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Node under disk pressure"
+    - name: platform.flux
+      rules:
+        - alert: FluxReconciliationFailure
+          expr: gotk_reconcile_condition{type="Ready",status="False"} == 1
+          for: 10m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Flux reconciliation failing, cluster drifting from Git"

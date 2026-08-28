@@ -1,0 +1,47 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: gitops-only-platform-config
+  annotations:
+    policies.kyverno.io/description: >-
+      GitHub is the only source of truth. Block anyone except Flux from mutating platform
+      config in the cluster. This is the literal mechanism behind "only those policies take effect",
+      and it is also what stops an agent from taking a shortcut around Git.
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: only-flux-mutates-collector
+      match:
+        any:
+          - resources:
+              kinds:
+                - opentelemetry.io/v1beta1/OpenTelemetryCollector
+                - helm.toolkit.fluxcd.io/v2/HelmRelease
+      exclude:
+        any:
+          - subjects:
+              - kind: ServiceAccount
+                namespace: flux-system
+                name: kustomize-controller
+              - kind: ServiceAccount
+                namespace: flux-system
+                name: helm-controller
+      validate:
+        message: "Platform config is GitOps managed. Change it in Git, not in the cluster."
+        deny: {}
+
+    - name: no-manual-tenant-edits
+      match:
+        any:
+          - resources:
+              kinds: ["capsule.clastix.io/v1beta2/Tenant"]
+      exclude:
+        any:
+          - subjects:
+              - kind: ServiceAccount
+                namespace: flux-system
+                name: kustomize-controller
+      validate:
+        message: "Tenants are provisioned by PR only. Open a PR against tenants/."
+        deny: {}

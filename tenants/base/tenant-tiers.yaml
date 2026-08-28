@@ -1,0 +1,15 @@
+# Reference only, not applied. Documents the pre approved quota tiers.
+# The provisioning agent auto merges a tenant PR only if it fits one of these exactly.
+#
+# tier: small    cpu 4    memory 8Gi    pods 30    namespaces 2
+# tier: medium   cpu 12   memory 24Gi   pods 80    namespaces 4
+# tier: large    cpu 32   memory 64Gi   pods 200   namespaces 8   -> requires human merge
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tenant-tiers
+  namespace: platform
+data:
+  small:  '{"cpu":"4","memory":"8Gi","pods":"30","namespaceQuota":"2","autoMerge":"true"}'
+  medium: '{"cpu":"12","memory":"24Gi","pods":"80","namespaceQuota":"4","autoMerge":"true"}'
+  large:  '{"cpu":"32","memory":"64Gi","pods":"200","namespaceQuota":"8","autoMerge":"false"}'

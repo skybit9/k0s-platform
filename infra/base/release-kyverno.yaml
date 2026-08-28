@@ -1,0 +1,28 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kyverno
+  namespace: platform
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: kyverno
+      version: "3.3.x"
+      sourceRef:
+        kind: HelmRepository
+        name: kyverno
+        namespace: flux-system
+  install:
+    crds: Create
+  upgrade:
+    crds: CreateReplace
+  values:
+    admissionController:
+      replicas: 1                   # Raise to 3 for real HA.
+    backgroundController:
+      enabled: true                 # Required for generate rules that scaffold tenant defaults.
+    cleanupController:
+      enabled: true
+    reportsController:
+      enabled: true                 # Produces PolicyReport, which the security agent reads.

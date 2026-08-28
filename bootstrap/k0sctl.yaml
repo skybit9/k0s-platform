@@ -1,0 +1,39 @@
+apiVersion: k0sctl.k0sproject.io/v1beta1
+kind: Cluster
+metadata:
+  name: home
+spec:
+  hosts:
+    # Controller + worker on one node for local. Split these for a multi node topology.
+    - role: controller+worker
+      noTaints: true
+      ssh:
+        address: 127.0.0.1
+        user: ubuntu
+        port: 22
+        keyPath: ~/.ssh/id_ed25519
+      installFlags:
+        - --enable-worker
+        - --no-taints
+  k0s:
+    version: v1.33.4+k0s.0
+    # Dynamic config: cluster wide settings become a CRD, so they are GitOps managed post bootstrap.
+    dynamicConfig: true
+    config:
+      apiVersion: k0s.k0sproject.io/v1beta1
+      kind: ClusterConfig
+      metadata:
+        name: k0s
+      spec:
+        network:
+          provider: calico          # Calico so NetworkPolicy is actually enforced. kuberouter is the lighter default.
+          podCIDR: 10.244.0.0/16
+          serviceCIDR: 10.96.0.0/12
+          nodeLocalLoadBalancing:
+            enabled: true
+        telemetry:
+          enabled: false            # Disable upstream k0s telemetry. Ours goes through the OTel Collector.
+        extensions:
+          helm:
+            repositories: []        # Intentionally empty. All charts come through Flux HelmRelease, not k0s extensions.
+            charts: []

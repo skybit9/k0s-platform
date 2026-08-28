@@ -1,0 +1,17 @@
+# Never commit cluster credentials.
+kubeconfig
+*.kubeconfig
+.kube/
+k0s.yaml
+k0sctl.log
+
+# Unencrypted secrets. Only SealedSecrets belong in this repo.
+*-secret.yaml
+!*-sealed-secret.yaml
+.decrypted~*
+*.dec.yaml
+
+# Local noise
+.DS_Store
+*.swp
+/tmp/

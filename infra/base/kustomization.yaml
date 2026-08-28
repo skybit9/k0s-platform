@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespaces.yaml
+  - sources.yaml
+  - release-cert-manager.yaml
+  - release-sealed-secrets.yaml
+  - release-kyverno.yaml
+  - release-capsule.yaml
+  - release-otel-operator.yaml
+  - release-kube-prometheus-stack.yaml
+  - rbac-otel-collector.yaml
+  - otel-collector.yaml
+  - prometheusrule-platform.yaml

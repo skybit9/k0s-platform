@@ -1,0 +1,80 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: workload-baseline
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: disallow-latest-tag
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      exclude:
+        any:
+          - resources:
+              namespaces: ["kube-system", "platform", "monitoring", "flux-system", "cert-manager"]
+      validate:
+        message: "Image tag :latest is not allowed. Pin an explicit tag or digest."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
+
+    - name: require-resources
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      exclude:
+        any:
+          - resources:
+              namespaces: ["kube-system", "platform", "monitoring", "flux-system", "cert-manager"]
+      validate:
+        message: "Every container must declare CPU and memory requests and limits."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  requests:
+                    cpu: "?*"
+                    memory: "?*"
+                  limits:
+                    memory: "?*"
+
+    - name: allowed-registries
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      exclude:
+        any:
+          - resources:
+              namespaces: ["kube-system", "platform", "monitoring", "flux-system", "cert-manager"]
+      validate:
+        message: "Images must come from an approved registry."
+        pattern:
+          spec:
+            containers:
+              - image: "ghcr.io/* | registry.k8s.io/* | docker.io/library/*"
+
+    - name: disallow-privileged
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      exclude:
+        any:
+          - resources:
+              namespaces: ["kube-system", "platform"]
+      validate:
+        message: "Privileged containers are not allowed."
+        pattern:
+          spec:
+            =(securityContext):
+              =(runAsNonRoot): "true"
+            containers:
+              - =(securityContext):
+                  =(privileged): "false"
+                  =(allowPrivilegeEscalation): "false"

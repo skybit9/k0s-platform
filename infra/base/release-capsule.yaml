@@ -1,0 +1,29 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: capsule
+  namespace: platform
+spec:
+  interval: 30m
+  dependsOn:
+    - name: cert-manager
+      namespace: cert-manager       # Capsule webhooks need certs issued first.
+  chart:
+    spec:
+      chart: capsule
+      version: "0.7.x"
+      sourceRef:
+        kind: HelmRepository
+        name: capsule
+        namespace: flux-system
+  install:
+    crds: Create
+  upgrade:
+    crds: CreateReplace
+  values:
+    manager:
+      options:
+        forceTenantPrefix: true     # Namespaces must be prefixed with the tenant name. Prevents cross tenant name grabs.
+        capsuleUserGroups:
+          - capsule.clastix.io
+          - system:serviceaccounts:flux-system   # Lets Flux create namespaces as a tenant owner.

@@ -1,0 +1,46 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-policy-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tooling
+        run: |
+          curl -s https://fluxcd.io/install.sh | sudo bash
+          curl -LO https://github.com/kyverno/kyverno/releases/latest/download/kyverno-cli_linux_x86_64.tar.gz
+          tar -xzf kyverno-cli_linux_x86_64.tar.gz && sudo mv kyverno /usr/local/bin/
+
+      - name: Build every overlay
+        run: |
+          set -e
+          for overlay in infra/overlays/home policies/overlays/home tenants apps/overlays/team-a; do
+            echo "building $overlay"
+            kustomize build --enable-helm "$overlay" > "/tmp/$(echo $overlay | tr / _).yaml"
+          done
+
+      - name: Validate Flux manifests
+        run: flux check --pre || true
+
+      - name: Kyverno dry run against built manifests
+        run: |
+          kyverno apply policies/base/ \
+            --resource /tmp/apps_overlays_team-a.yaml \
+            --resource /tmp/tenants.yaml \
+            --detailed-results
+
+      - name: Block agent PRs touching human-only paths
+        if: github.actor == 'platform-agent[bot]'
+        run: |
+          CHANGED=$(git diff --name-only origin/main...HEAD)
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -Eq 'policies/|rbac-|role|binding|secret|bootstrap/|clusters/'; then
+            echo "Agent PR touches a human-only path. Blocking auto merge."
+            exit 1
+          fi

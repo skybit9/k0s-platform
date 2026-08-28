@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: team-a-routing
+  namespace: team-a-prod
+  labels:
+    alertmanager-config: enabled    # Selector label. Without it Alertmanager ignores this file.
+    team: team-a
+spec:
+  # The operator auto injects a namespace matcher, so this can only route team-a's own alerts.
+  route:
+    receiver: team-a-slack
+    groupBy: ["alertname", "severity"]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    routes:
+      - receiver: team-a-slack
+        matchers:
+          - name: severity
+            value: critical
+  receivers:
+    - name: team-a-slack
+      slackConfigs:
+        - apiURL:
+            name: team-a-alert-secrets      # SealedSecret, decrypted in namespace. Team owns their own credential.
+            key: slack-webhook-url
+          channel: "#team-a-alerts"
+          sendResolved: true

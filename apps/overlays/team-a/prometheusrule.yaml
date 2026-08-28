@@ -1,0 +1,30 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: team-a-app-rules
+  namespace: team-a-prod
+  labels:
+    team: team-a                    # Required by the require-team-label policy. Admission rejects without it.
+spec:
+  groups:
+    - name: team-a.app
+      rules:
+        - alert: PodCrashLooping
+          expr: |
+            rate(kube_pod_container_status_restarts_total{namespace="team-a-prod"}[10m]) > 0
+          for: 10m
+          labels:
+            severity: critical
+            team: team-a
+          annotations:
+            summary: "Pod restarting repeatedly in team-a-prod"
+        - alert: HighErrorRate
+          expr: |
+            sum(rate(http_requests_total{namespace="team-a-prod",code=~"5.."}[5m]))
+            / sum(rate(http_requests_total{namespace="team-a-prod"}[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            team: team-a
+          annotations:
+            summary: "Error rate above 5 percent"

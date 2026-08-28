@@ -1,0 +1,29 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-team-label
+  annotations:
+    policies.kyverno.io/description: >-
+      Alert routing keys off the team label. A rule without it is unroutable, so reject it
+      at admission rather than discovering silent alerts later.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-team-on-monitoring-objects
+      match:
+        any:
+          - resources:
+              kinds:
+                - monitoring.coreos.com/v1/PrometheusRule
+                - monitoring.coreos.com/v1/ServiceMonitor
+      exclude:
+        any:
+          - resources:
+              namespaces: ["monitoring", "platform", "flux-system"]
+      validate:
+        message: "PrometheusRule and ServiceMonitor must carry a team label for alert routing."
+        pattern:
+          metadata:
+            labels:
+              team: "?*"

@@ -1,0 +1,14 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  interval: 5m
+  prune: true
+  dependsOn:
+    - name: tenants                 # Tenant namespaces must exist before workloads target them.
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/overlays/team-a

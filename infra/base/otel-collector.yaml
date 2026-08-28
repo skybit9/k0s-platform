@@ -1,0 +1,63 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: platform
+  namespace: monitoring
+spec:
+  mode: daemonset                   # DaemonSet so kubeletstats sees every node.
+  serviceAccount: otel-collector
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      kubeletstats:
+        collection_interval: 30s
+        auth_type: serviceAccount
+        endpoint: "https://${env:K8S_NODE_NAME}:10250"
+        insecure_skip_verify: true
+      k8s_cluster:
+        collection_interval: 30s
+    processors:
+      batch: {}
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+      k8sattributes:                # Attaches namespace, pod, and the team label. Required for per team routing.
+        extract:
+          metadata:
+            - k8s.namespace.name
+            - k8s.pod.name
+            - k8s.node.name
+          labels:
+            - tag_name: team
+              key: team
+              from: namespace
+      resource:
+        attributes:
+          - key: cluster
+            value: home
+            action: upsert
+    exporters:
+      prometheusremotewrite:
+        endpoint: http://kube-prometheus-stack-prometheus.monitoring.svc:9090/api/v1/write
+      debug:
+        verbosity: basic
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp, kubeletstats, k8s_cluster]
+          processors: [memory_limiter, k8sattributes, resource, batch]
+          exporters: [prometheusremotewrite]
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, k8sattributes, resource, batch]
+          exporters: [debug]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, k8sattributes, resource, batch]
+          exporters: [debug]

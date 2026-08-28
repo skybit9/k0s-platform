@@ -1,0 +1,40 @@
+# A team requests an environment by opening a PR that adds exactly this file.
+# Merge is the only provisioning step. Flux picks it up within 1m.
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: team-a
+  labels:
+    tier: small
+spec:
+  owners:
+    - name: team-a-admins           # Maps to an OIDC or cert group. Namespace scoped admin, never cluster-admin.
+      kind: Group
+  namespaceOptions:
+    quota: 2
+    additionalMetadata:
+      labels:
+        team: team-a               # Propagated to every namespace. OTel k8sattributes reads it for routing.
+  resourceQuotas:
+    scope: Tenant
+    items:
+      - hard:
+          limits.cpu: "4"
+          limits.memory: 8Gi
+          pods: "30"
+  networkPolicies:
+    items:
+      - podSelector: {}
+        policyTypes: ["Ingress"]
+        ingress:
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    team: team-a
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: monitoring   # Let Prometheus scrape.
+  containerRegistries:
+    allowed:
+      - ghcr.io
+      - registry.k8s.io
